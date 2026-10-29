@@ -1,9 +1,22 @@
+using Microsoft.AspNetCore.StaticFiles;
+using owsLab.Models;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Servisleri konteynere ekle
 builder.Services.AddControllersWithViews();
+builder.Services.AddHttpClient();
+builder.Services.AddMemoryCache();
+builder.Services.Configure<TkgmOwsAyarlari>(builder.Configuration.GetSection(TkgmOwsAyarlari.Bolum));
 
 var app = builder.Build();
+
+// GitHub Pages gibi alt dizinde yayınlanan statik kopya için (ör. /owsLab). Boşsa site kökte çalışır.
+string? yolTabani = builder.Configuration["YolTabani"];
+if (!string.IsNullOrWhiteSpace(yolTabani))
+{
+    app.UsePathBase(yolTabani);
+}
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -14,11 +27,19 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
+// wwwroot/data altındaki örnek GML kayıtları için içerik tipi
+var icerikTipleri = new FileExtensionContentTypeProvider();
+icerikTipleri.Mappings[".gml"] = "application/gml+xml";
+app.UseStaticFiles(new StaticFileOptions { ContentTypeProvider = icerikTipleri });
 
 app.UseRouting();
 
 app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "ders",
+    pattern: "ders/{slug}",
+    defaults: new { controller = "Ders", action = "Goster" });
 
 app.MapControllerRoute(
     name: "default",
